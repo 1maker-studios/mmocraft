@@ -2,13 +2,15 @@ package com.metype.mmocraft.util;
 
 import com.metype.mmocraft.player.MMOPlayer;
 import com.metype.mmocraft.player.PlayerAdapter;
-import com.metype.mmocraft.skill.ISkill;
+import com.metype.mmocraft.skill.Skill;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.ComponentLike;
 import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.format.TextDecoration;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.Identifier;
 import org.jetbrains.annotations.NotNull;
 
@@ -38,7 +40,7 @@ public class UIUtil {
         playerAudience.sendActionBar(Component.text(message));
     }
 
-    public static void showLevelUpMessage(MMOPlayer player, ISkill skill) {
+    public static void showLevelUpMessage(MMOPlayer player, Skill skill) {
         Audience playerAudience = PlayerAdapter.getPlayer(player);
 
         playerAudience.sendMessage(
@@ -49,7 +51,7 @@ public class UIUtil {
         );
     }
 
-    public static void showSkillPointGainMessage(MMOPlayer player, ISkill skill) {
+    public static void showSkillPointGainMessage(MMOPlayer player, Skill skill) {
         Audience playerAudience = PlayerAdapter.getPlayer(player);
 
         playerAudience.sendMessage(
@@ -59,7 +61,7 @@ public class UIUtil {
         );
     }
 
-    private static BossBar getXPBarForSkill(ISkill skill) {
+    private static BossBar getXPBarForSkill(Skill skill) {
         return BossBar.bossBar(
                 Component.text(skill.getName() + " ").color(skillNameColor)
                         .append(Component.text(skill.getLevel() + " ").color(intVariableMessageColor))
@@ -72,12 +74,15 @@ public class UIUtil {
         );
     }
 
-    public static void showSkillBossBar(MMOPlayer player, ISkill skill) {
+    public synchronized static void showSkillBossBar(MMOPlayer player, Skill skill) {
+        if(!player.shouldShowBossBar()) return;
+
         Audience audiencePlayer = PlayerAdapter.getPlayer(player);
 
         PlayerWithBossBarForSkill v = null;
 
         for(PlayerWithBossBarForSkill p : bossBarViewers) {
+            if(p == null) continue;
             if(p.skill.compareTo(skill.getID()) == 0) {
                 p.viewer.hideBossBar(p.bossBar);
                 v = p;
@@ -105,6 +110,7 @@ public class UIUtil {
         List<PlayerWithBossBarForSkill> toRemove = new ArrayList<>();
 
         for(PlayerWithBossBarForSkill p : bossBarViewers) {
+            if(p == null) continue;
             p.timer--;
             if(p.timer <= 0) {
                 p.viewer.hideBossBar(p.bossBar);

@@ -4,7 +4,6 @@ import com.metype.mmocraft.player.MMOPlayer;
 import org.jetbrains.annotations.NotNull;
 
 import java.sql.*;
-import java.util.*;
 
 public class DBUtils {
     private Connection connection;
@@ -31,13 +30,13 @@ public class DBUtils {
     }
 
     public void updatePlayer(@NotNull MMOPlayer player) throws SQLException {
-        updateUserStatement.setString(1, player.playerID.toString());
+        updateUserStatement.setString(1, player.uuid.toString());
         updateUserStatement.setString(2, player.serialize());
         updateUserStatement.executeUpdate();
     }
 
     public void getPlayer(@NotNull MMOPlayer player) throws SQLException {
-        getUserStatement.setString(1, player.playerID.toString());
+        getUserStatement.setString(1, player.uuid.toString());
         ResultSet results = getUserStatement.executeQuery();
         player.deserialize(results.getString("skills"));
     }

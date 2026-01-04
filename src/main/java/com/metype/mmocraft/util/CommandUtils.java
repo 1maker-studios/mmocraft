@@ -8,6 +8,7 @@ import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.MutableText;
 
+import java.util.Map;
 import java.util.Optional;
 
 public class CommandUtils {
@@ -36,10 +37,11 @@ public class CommandUtils {
         stack.set(DataComponentTypes.LORE, existing);
     }
 
-    public static String format(String string, Object... objects) {
-        for(Object o : objects) {
-            string = string.replaceFirst("\\{}", String.valueOf(o));
+    public static String format(String input, Map<String, Object> args) {
+        for(String argID : args.keySet()) {
+            if(!input.contains("{" + argID  + "}")) continue;
+            input = input.replaceFirst("\\{" + argID  + "}", args.get(argID).toString());
         }
-        return string;
+        return input;
     }
 }

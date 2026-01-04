@@ -16,6 +16,12 @@ public class PlayerAdapter {
 
     public static ServerPlayerEntity getPlayer(MMOPlayer player) {
         if(player == null) return null;
-        return MMOCraft.SERVER.getPlayerManager().getPlayer(player.playerID);
+        return MMOCraft.SERVER.getPlayerManager().getPlayer(player.uuid);
+    }
+
+    public static void saveAllPlayers() {
+        for(MMOPlayer player : cachedPlayers.values()) {
+            player.save();
+        }
     }
 }

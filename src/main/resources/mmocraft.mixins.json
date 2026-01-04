@@ -4,8 +4,11 @@
   "package": "com.metype.mmocraft.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
+    "BlockItemMixin",
+    "BowItemMixin",
     "LivingEntityMixin",
-    "ServerPlayerGameModeMixin"
+    "ServerPlayerGameModeMixin",
+    "WorldMixin"
   ],
   "client": [
   ],

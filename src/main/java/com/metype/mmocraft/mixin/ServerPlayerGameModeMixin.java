@@ -3,15 +3,18 @@ package com.metype.mmocraft.mixin;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.sugar.Local;
+import com.metype.mmocraft.MMOCraft;
 import com.metype.mmocraft.player.MMOPlayer;
 import com.metype.mmocraft.player.PlayerAdapter;
 import com.metype.mmocraft.skill.MiningSkill;
+import com.metype.mmocraft.skill.WoodcuttingSkill;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.ItemUsageContext;
+import net.minecraft.registry.tag.BlockTags;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.network.ServerPlayerInteractionManager;
 import net.minecraft.server.world.ServerWorld;
@@ -26,7 +29,6 @@ import org.spongepowered.asm.mixin.injection.At;
 @Mixin(ServerPlayerInteractionManager.class)
 public class ServerPlayerGameModeMixin {
 
-    @Shadow protected ServerWorld world;
     @Final
     @Shadow protected ServerPlayerEntity player;
 
@@ -38,21 +40,9 @@ public class ServerPlayerGameModeMixin {
             return;
         }
 
-        if(MiningSkill.playerMineHandler(mmoPlayer, (ServerWorld) world, pos, state)) {
-            original.call(instance, world, player, pos, state, blockEntity, tool);
-        }
+        WoodcuttingSkill.playerChopHandler(mmoPlayer, (ServerWorld) world, pos, state);
+        MiningSkill.playerMineHandler(mmoPlayer, (ServerWorld) world, pos, state);
 
         original.call(instance, world, player, pos, state, blockEntity, tool);
-    }
-
-    @WrapOperation(method="interactBlock", at = @At(value = "INVOKE", target = "Lnet/minecraft/item/ItemStack;useOnBlock(Lnet/minecraft/item/ItemUsageContext;)Lnet/minecraft/util/ActionResult;"))
-    public ActionResult placeBlock(ItemStack instance, ItemUsageContext context, Operation<ActionResult> original, @Local() BlockPos blockPos) {
-        ActionResult result = original.call(instance, context);
-        if(result instanceof ActionResult.Success success) {
-            if(success.shouldIncrementStat()) {
-                //TODO: Actually log placed blocks and remove them from the XP earning pool
-            }
-        }
-        return result;
     }
 }
