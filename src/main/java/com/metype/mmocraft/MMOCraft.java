@@ -71,6 +71,7 @@ public class MMOCraft implements ModInitializer {
         CHUNK_MANAGER = new ChunkManager();
 
         ServerChunkEvents.CHUNK_LOAD.register(CHUNK_MANAGER::chunkLoad);
+        ServerChunkEvents.CHUNK_GENERATE.register(CHUNK_MANAGER::chunkLoad);
         ServerChunkEvents.CHUNK_UNLOAD.register(CHUNK_MANAGER::chunkUnload);
 
         try {

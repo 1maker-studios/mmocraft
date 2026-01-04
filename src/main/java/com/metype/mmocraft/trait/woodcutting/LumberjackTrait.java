@@ -78,7 +78,7 @@ public class LumberjackTrait extends Trait {
         {
             BlockPos blockPos = stack.pop();
 
-            if(set.contains(blockPos) || MMOCraft.CHUNK_MANAGER.isInvalid(world, blockPos))
+            if(set.contains(blockPos))
                 continue;
 
             if((allowedBlocks.contains(world.getBlockState(blockPos).getBlock()) || blockPos.equals(position)) && isPartOfTree(blockPos, position))
@@ -88,7 +88,8 @@ public class LumberjackTrait extends Trait {
                 for(Direction direction : Direction.values())
                 {
                     BlockPos offset = blockPos.offset(direction);
-                    stack.push(offset);
+
+                    if(!MMOCraft.CHUNK_MANAGER.isInvalid(world, offset)) stack.push(offset);
                 }
             }
         }

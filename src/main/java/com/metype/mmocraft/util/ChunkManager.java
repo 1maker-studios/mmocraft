@@ -7,8 +7,10 @@ import net.minecraft.registry.RegistryKey;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
+import net.minecraft.util.thread.TaskExecutor;
 import net.minecraft.world.World;
 import net.minecraft.world.chunk.WorldChunk;
+import org.apache.commons.compress.compressors.gzip.GzipUtils;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
@@ -18,6 +20,9 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.zip.GZIPInputStream;
 
 public class ChunkManager {
 
@@ -28,13 +33,14 @@ public class ChunkManager {
         byte[] blockData = new byte[12288];
         ChunkPos position;
         RegistryKey<World> world;
+        AtomicBoolean loaded = new AtomicBoolean(false);
 
         private int blockDataIndex(BlockPos posInChunk) {
             return (posInChunk.getX() + (posInChunk.getY() * 16) + (posInChunk.getZ() * 16 * 384)) / 8;
         }
 
         private int byteIndex(BlockPos posInChunk) {
-            return (posInChunk.getX() + (posInChunk.getY() * 16) + (posInChunk.getZ() * 16 * 384)) % 8;
+            return blockDataIndex(posInChunk) % 8;
         }
 
         public ChunkInfo(WorldChunk worldChunk) {
@@ -44,17 +50,23 @@ public class ChunkManager {
 
         public void setInvalid(BlockPos pos) {
             pos = pos.subtract(position.getStartPos());
-            blockData[blockDataIndex(pos)] |= (byte) (1 << byteIndex(pos));
+            int idx = blockDataIndex(pos);
+            if(idx < 0 || idx > blockData.length - 1) return;
+            blockData[idx] |= (byte) (1 << byteIndex(pos));
         }
 
         public void setValid(BlockPos pos) {
             pos = pos.subtract(position.getStartPos());
-            blockData[blockDataIndex(pos)] &= (byte) ~(1 << byteIndex(pos));
+            int idx = blockDataIndex(pos);
+            if(idx < 0 || idx > blockData.length - 1) return;
+            blockData[idx] &= (byte) ~(1 << byteIndex(pos));
         }
 
         public boolean isValid(BlockPos pos) {
             pos = pos.subtract(position.getStartPos());
-            return (blockData[blockDataIndex(pos)] & (1 << byteIndex(pos))) == 0;
+            int idx = blockDataIndex(pos);
+            if(idx < 0 || idx > blockData.length - 1) return false;
+            return (blockData[idx] & (1 << byteIndex(pos))) == 0;
         }
 
         private File getChunkFile(Path parentDir) throws IOException {
@@ -67,38 +79,46 @@ public class ChunkManager {
         }
 
         public void save(Path parentDir) {
-            try {
-                File chunkFile = getChunkFile(parentDir);
-                if (!chunkFile.exists()) {
-                    chunkFile.createNewFile();
-                }
-                try(OutputStream stream = new FileOutputStream(chunkFile)) {
-                    try {
-                        stream.write(blockData);
-                        stream.flush();
-                        stream.close();
+            Thread.ofPlatform().name("MMOCraft Chunk Save").start(() -> {
+                if(!loaded.get()) return;
+
+                try {
+                    File chunkFile = getChunkFile(parentDir);
+                    if (!chunkFile.exists()) {
+                        chunkFile.createNewFile();
+                    }
+                    try(OutputStream stream = new FileOutputStream(chunkFile)) {
+                        try {
+                            
+                            stream.write(blockData);
+                            stream.flush();
+                            stream.close();
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
                     } catch (IOException e) {
                         throw new RuntimeException(e);
                     }
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
+                } catch (Exception e) {
+                    MMOCraft.LOGGER.error("Error saving chunk data", e);
                 }
-            } catch (Exception e) {
-                MMOCraft.LOGGER.error("Error saving chunk data", e);
-            }
+            });
         }
 
         public void load(Path parentDir) {
-            try {
-                File chunkFile = getChunkFile(parentDir);
-                if (!chunkFile.exists()) {
-                    return;
+            Thread.ofPlatform().name("MMOCraft Chunk Load").start(() -> {
+                try {
+                    File chunkFile = getChunkFile(parentDir);
+                    if (!chunkFile.exists()) {
+                        return;
+                    }
+                    byte[] data = Files.readAllBytes(chunkFile.toPath());
+                    System.arraycopy(data, 0, blockData, 0, Math.min(data.length, blockData.length));
+                    loaded.set(true);
+                } catch (Exception e) {
+                    MMOCraft.LOGGER.error("Error loading chunk data", e);
                 }
-                byte[] data = Files.readAllBytes(chunkFile.toPath());
-                System.arraycopy(data, 0, blockData, 0, Math.min(data.length, blockData.length));
-            } catch (Exception e) {
-                MMOCraft.LOGGER.error("Error loading chunk data", e);
-            }
+            });
         }
     }
 
